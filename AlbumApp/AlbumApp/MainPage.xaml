@@ -13,5 +13,6 @@
                    PointerReleased="TestRectangle_PointerReleased"
                    PointerExited="TestRectangle_PointerExited" />
         <Canvas Name="MainCanvas" />
+        <TextBlock HorizontalAlignment="Right" Margin="1218,725,0,0" TextWrapping="Wrap" Text="Loading Media..." VerticalAlignment="Bottom" Height="33" Width="138" FontSize="18" Name="TextLabel"/>
     </Grid>
 </Page>
