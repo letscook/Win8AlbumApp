@@ -124,6 +124,7 @@
     <Content Include="Assets\Album\PlayVideo.png" />
     <Content Include="Assets\Album\Portrait1.png" />
     <Content Include="Assets\Album\Portrait2.png" />
+    <Content Include="Assets\Album\TestVideo.wmv" />
     <Content Include="Assets\Logo.png" />
     <Content Include="Assets\SmallLogo.png" />
     <Content Include="Assets\SplashScreen.png" />

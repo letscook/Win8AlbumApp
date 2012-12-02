@@ -36,26 +36,64 @@ namespace AlbumApp
             "Portrait2.png",
         };
 
+        // Define all image titles
+        string[] ImageTitles = new string[] {
+            "Title One",
+            "Title Two",
+            "Title Three",
+            "Tap Image to Play",
+            "Hello, World!",
+            "Goodbye, World!",
+        };
+
+        // Define video strings paired with the image strings
+        string[] ImageVideoFileNames = new string[] {
+            "",
+            "",
+            "",
+            "TestVideo.wmv",
+            "",
+            "",
+        };
+
         // Current image index, and image count
         private int ImageIndex = 0;
         private int ImageCount = 0;
+
+        // Rotation constant
+        private double GRotates = 20.0;
+
+        // Global random
+        Random GRandom = new Random();
+
+        // Video player in question
+        MediaElement VideoPlayer = null;
 
         public MainPage()
         {
             this.InitializeComponent();
 
+            // Kill interaction for images
+            TitleLabel.IsHitTestVisible = false;
+            TextLabel.IsHitTestVisible = false;
+
             // Image count set
             ImageCount = ImageFileNames.Length;
 
             // For each image
-            foreach (string ImageFileName in ImageFileNames)
+            for(int i = 0; i < ImageFileNames.Length; i++)
             {
+                // Pull out image file name
+                string ImageFileName = ImageFileNames[i];
+
                 // Add all images to main rect...
                 Image TestImage = new Image();
                 TestImage.Source = new BitmapImage(new Uri(this.BaseUri, "/Assets/Album/" + ImageFileName));
                 MainCanvas.Children.Add(TestImage);
+                
+                // Make sure images aren't interactable
                 TestImage.IsHitTestVisible = false;
-
+                
                 // Once an image is loaded; move off to side
                 TestImage.ImageOpened += TestImage_Loaded;
             }
@@ -68,10 +106,12 @@ namespace AlbumApp
         {
             // Move image to the side and invisible
             Image TestImage = sender as Image;
-            TranslateTransform SideTrans = new TranslateTransform();
-            SideTrans.X = -TestImage.ActualWidth + 10;
-            SideTrans.Y = MainCanvas.ActualHeight / 2 - TestImage.ActualHeight / 2;
-            TestImage.RenderTransform = SideTrans;
+            CompositeTransform Transform = new CompositeTransform();
+            Transform.TranslateX = -TestImage.ActualWidth + 10;
+            Transform.TranslateY = MainCanvas.ActualHeight / 2 - TestImage.ActualHeight / 2;
+            Transform.Rotation = (GRandom.NextDouble() - 0.5) * GRotates;
+
+            TestImage.RenderTransform = Transform;
 
             ImagesLoaded++;
 
@@ -90,64 +130,84 @@ namespace AlbumApp
         }
 
         // Register starting point (null if no interaction)
-        bool IsDragging = false;
         Point FirstPoint;
 
         /*** User Events ***/
 
         private void TestRectangle_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            IsDragging = true;
             FirstPoint = e.GetCurrentPoint(sender as UIElement).Position;
         }
 
         private void TestRectangle_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            IsDragging = false;
             Point LastPoint = e.GetCurrentPoint(sender as UIElement).Position;
 
             // Check for drag success
             CheckDrag(LastPoint);
         }
 
-        private void TestRectangle_PointerExited(object sender, PointerRoutedEventArgs e)
-        {
-            IsDragging = false;
-            Point LastPoint = e.GetCurrentPoint(sender as UIElement).Position;
-
-            // Check for drag success
-            //CheckDrag(LastPoint);
-        }
-
         private void CheckDrag(Point LastPoint)
         {
+            // Ignore if there is a video playing...
+            if (VideoPlayer != null)
+                return;
+
             // Is the delta y minimal?
             int dx = (int)LastPoint.X - (int)FirstPoint.X;
             int dy = (int)LastPoint.Y - (int)FirstPoint.Y;
+            double dRange = Math.Sqrt(dx * dx + dy * dy);
 
-            // If the pixel delta is small, just ignore
-            if (dy > 100)
-                return;
+            // Click event
+            if (ImageVideoFileNames[ImageIndex].Length > 0 && dRange < 25)
+            {
+                // Load up the video...
+                VideoPlayer = new MediaElement();
+                VideoPlayer.Source = new Uri(this.BaseUri, "/Assets/Album/" + ImageVideoFileNames[ImageIndex]);
+                VideoPlayer.Play();
+                VideoPlayer.Width = MainCanvas.ActualWidth;
+                VideoPlayer.Height = MainCanvas.ActualHeight;
 
-            // Else, we figure out direction
-            if (dx < -100 && ImageIndex > 0)
-            {
-                // Move to left image
-                ImageIndex--;
-                UpdateAnimation();
+                // Add video ontop of main view
+                MainCanvas.Children.Add(VideoPlayer);
+
+                // Register button event in case user wants to cancel...
+                VideoPlayer.PointerReleased += VideoPlayer_PointerReleased;
             }
-            else if (dx > 100 && ImageIndex < ImageCount - 1)
+
+            // Drag event
+            else if (dy < 25 && dy > -25) // Horizontal drag
             {
-                // Move to right image
-                ImageIndex++;
-                UpdateAnimation();
+                // Else, we figure out direction
+                if (dx < -100 && ImageIndex > 0)
+                {
+                    // Move to left image
+                    ImageIndex--;
+                    UpdateAnimation();
+                }
+                else if (dx > 100 && ImageIndex < ImageCount - 1)
+                {
+                    // Move to right image
+                    ImageIndex++;
+                    UpdateAnimation();
+                }
             }
+        }
+
+        private void VideoPlayer_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            // Sender is always video; kill video
+            MediaElement Video = sender as MediaElement;
+            Video.Stop();
+            MainCanvas.Children.Remove(Video);
+            VideoPlayer = null;
         }
 
         private void UpdateAnimation()
         {
             // Set the text
             TextLabel.Text = (ImageIndex + 1) + " / " + ImageCount;
+            TitleLabel.Text = ImageTitles[ImageIndex];
 
             /*** Move all to the left ***/
 
@@ -191,9 +251,17 @@ namespace AlbumApp
                     DoubleAnimation Animation = new DoubleAnimation();
                     Animation.Duration = AnimationTime;
 
+                    DoubleAnimation RAnimation = new DoubleAnimation();
+                    RAnimation.Duration = AnimationTime;
+
                     // Original x position of image
-                    // NOTE: this is the official approach; how insaine is this?!
-                    double OriginalX = TargetImage.TransformToVisual(MainCanvas).TransformPoint(new Point()).X;
+                    CompositeTransform Rotation = TargetImage.RenderTransform as CompositeTransform;
+                    double OriginalX = Rotation.TranslateX;
+                    double OriginalR = Rotation.Rotation;
+
+                    // Randomize rotation to something reasonable
+                    RAnimation.From = OriginalR;
+                    RAnimation.To = OriginalR;
 
                     // Stay left
                     if (GroupIndex == 0)
@@ -206,17 +274,21 @@ namespace AlbumApp
                     {
                         Animation.From = OriginalX;
                         Animation.To = MainCanvas.ActualWidth / 2 - TargetImage.ActualWidth / 2;
+                        RAnimation.To = (GRandom.NextDouble() - 0.5) * GRotates; // [-0.5, 0.5] * range
                     }
                     else if(GroupIndex == 2)
                     {
                         Animation.From = OriginalX;
                         Animation.To = -TargetImage.ActualWidth + 10;
                     }
-                    
+
                     // Add x trans to storyboard
                     XAnimation.Children.Add(Animation);
+                    XAnimation.Children.Add(RAnimation);
                     Storyboard.SetTarget(Animation, TargetImage);
-                    Storyboard.SetTargetProperty(Animation, "(UIElement.RenderTransform).(TranslateTransform.X)");
+                    Storyboard.SetTarget(RAnimation, TargetImage);
+                    Storyboard.SetTargetProperty(Animation, "(UIElement.RenderTransform).(CompositeTransform.TranslateX)");
+                    Storyboard.SetTargetProperty(RAnimation, "(UIElement.RenderTransform).(CompositeTransform.Rotation)");
                 }
 
                 // Done with commitment

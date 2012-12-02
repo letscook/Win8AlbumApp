@@ -10,9 +10,9 @@
     <Grid Background="{StaticResource ApplicationPageBackgroundThemeBrush}">
         <Rectangle Name="TestRectangle" Fill="Transparent"
                    PointerPressed="TestRectangle_PointerPressed"
-                   PointerReleased="TestRectangle_PointerReleased"
-                   PointerExited="TestRectangle_PointerExited" />
+                   PointerReleased="TestRectangle_PointerReleased" />
         <Canvas Name="MainCanvas" />
         <TextBlock HorizontalAlignment="Right" Margin="1218,725,0,0" TextWrapping="Wrap" Text="Loading Media..." VerticalAlignment="Bottom" Height="33" Width="138" FontSize="18" Name="TextLabel"/>
+        <TextBlock HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Text="Loading Title..." VerticalAlignment="Center" Height="64" Width="1346" FontSize="36" x:Name="TitleLabel" Margin="10,694,10,10" FontStyle="Italic"/>
     </Grid>
 </Page>
